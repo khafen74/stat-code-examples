@@ -1,0 +1,154 @@
+xy=read.csv("xy.csv")
+plot(xy)
+
+
+dev=function(y){
+	dev=sum((y-mean(y))^2)
+      return(dev)
+	}
+
+findsplit=function(z){
+	zsort=z[order(z[,1]),]
+	n=nrow(z)
+	w=data.frame(matrix(0,ncol=7,nrow=n-1))
+	names(w)=c("Splitpoint","RSSleft","RSSright","RSStotal","MSEleft","MSEright","MSEtotal")
+	for(j in 1:n-1){
+		w[j,1] = (zsort[j,1] + zsort[j+1,1])/2
+		w[j,2] = dev(zsort[1:j,2])
+		w[j,5] = w[j,2]/j
+		w[j,3] = dev(zsort[(j+1):n,2])
+		w[j,6] = w[j,3]/(n-j)
+		w[j,4] = w[j,2] + w[j,3]
+		w[j,7] = w[j,4]/n
+	}
+	return(list(zsort,w))
+}
+
+fred=findsplit(xy)
+xysort=fred[[1]]
+splitdata=fred[[2]]
+plot(splitdata[,1],splitdata[,4],type="l",bty="l",xlab="x",ylab="Mean Squared Error")
+
+plot(xysort[,1],xysort[,2],bty="l",xlab="x",ylab="y")
+lines(c(0,1.0),c(mean(xysort[26:50,2]),mean(xysort[26:50,2])))
+lines(c(-1.0,0),c(mean(xysort[1:25,2]),mean(xysort[1:25,2])))
+mean(xysort[1:25,2]);mean(xysort[26:50,2])
+
+
+library(rpart)
+xyrpart=rpart(y~x,data=xy)
+plot(xyrpart,margin=0.1)
+text(xyrpart,use.n=TRUE)
+
+summary(xyrpart)
+xyrpart
+
+xyrpart4tnodes=rpart(y~x,data=xy,control=rpart.control(cp=0.0))
+plot(xyrpart4tnodes,margin=0.1)
+text(xyrpart4tnodes,use.n=TRUE)
+
+xyrpartfull=rpart(y~x,data=xy,control=rpart.control(cp=0.0,minsplit=2))
+
+plotcp(xyrpartfull)
+
+printcp(xyrpartfull)
+
+xyrpartfinal=rpart(y~x,data=xy,control=rpart.control(cp=0.11,minsplit=2))
+plot(xyrpartfinal, margin=0.1)
+text(xyrpartfinal,use.n=TRUE)
+
+
+
+xor=read.csv("xor.csv")
+
+xorrpartfull=rpart(xory~xorx1+xorx2,data=xor,method="class",control=rpart.control(cp=0.0,minsplit=2))
+plotcp(xorrpartfull)
+
+
+plot(xorrpartfull,margin=0.1)
+text(xorrpartfull,use.n=TRUE)
+
+xorcp048=rpart(xory~xorx1+xorx2,data=xor,method="class",control=rpart.control(cp=0.048,minsplit=2))
+
+plot(xorcp048,margin=0.1)
+text(xorcp048,use.n=TRUE)
+
+table(xor$xory,predict(xorcp048,type="class"))
+class.sum(xor$xory,predict(xorcp048,type="prob")[,2])
+
+set.seed(6066)
+xor.xval.predprob=rep(0,length=nrow(xor))
+xor.xval.predclass=rep(0,length=nrow(xor))
+xvs=rep(1:10,length=nrow(xor))
+xvs=sample(xvs)
+for(i in 1:10){
+     train = xor[xvs!=i,]
+     test = xor[xvs==i,]
+     glub=rpart(xory~xorx1+xorx2,data=train,method="class",control=rpart.control(cp=0.048,minsplit=2))
+     xor.xval.predprob[xvs==i]=predict(glub,test,type="prob")[,2]
+     xor.xval.predclass[xvs==i]=predict(glub,test,type="class")
+   }
+
+table(xor$xory,xor.xval.predclass)
+class.sum(xor$xory,xor.xval.predprob)
+
+
+xor.xval.predprob=rep(0,length=nrow(xor))
+xor.xval.predclass=rep(0,length=nrow(xor))
+xvs=rep(1:10,length=nrow(xor))
+xvs=sample(xvs)
+for(i in 1:10){
+     train = xor[xvs!=i,]
+     test = xor[xvs==i,]
+     glub=rpart(xory~xorx1+xorx2,data=train,method="class",control=rpart.control(cp=0.0,minsplit=2))
+     xor.xval.predprob[xvs==i]=predict(glub,test,type="prob")[,2]
+     xor.xval.predclass[xvs==i]=predict(glub,test,type="class")
+   }
+
+table(xor$xory,xor.xval.predclass)
+class.sum(xor$xory,xor.xval.predprob)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+xor.rf=randomForest(as.factor(xory)~xorx1+xorx2,data=xor)
+xor.rf$confusion
+
+xor.rf.xval.predprob=rep(0,length=nrow(xor))
+xor.rf.xval.predclass=rep(0,length=nrow(xor))
+xvs=rep(1:10,length=nrow(xor))
+xvs=sample(xvs)
+for(i in 1:10){
+     train = xor[xvs!=i,]
+     test = xor[xvs==i,]
+     glub=randomForest(as.factor(xory)~xorx1+xorx2,data=train)
+     xor.rf.xval.predprob[xvs==i]=predict(glub,test,type="prob")[,2]
+     xor.rf.xval.predclass[xvs==i]=predict(glub,test,type="class")
+   }
+
+table(xor$xory,xor.rf.xval.predclass)
+class.sum(xor$xory,xor.rf.xval.predprob)
+
+
+
+
+
+
+
+
+mse=function(y){
+    mse=sum((y-mean(y))^2)/length(y)
+    return(mse)
+	}
+
